@@ -20,9 +20,9 @@ io.on('connection', function (socket) {
   var addedUser = false;
 
   // when the client emits 'new message', this listens and executes
-  socket.on('new message', function (data) {
+  socket.on('new message', function (data,roomId) {
     // we tell the client to execute 'new message'
-    socket.broadcast.emit('new message', {
+    socket.broadcast.to(roomId).emit('new message', {
       username: socket.username,
       message: data
     });
@@ -39,8 +39,12 @@ io.on('connection', function (socket) {
     socket.emit('login', {
       numUsers: numUsers
     });
+  });
+
+  socket.on('join',function(roomId){
     // echo globally (all clients) that a person has connected
-    socket.broadcast.emit('user joined', {
+    socket.join(roomId);
+    socket.broadcast.to(roomId).emit('user joined', {
       username: socket.username,
       numUsers: numUsers
     });
