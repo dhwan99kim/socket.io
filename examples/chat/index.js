@@ -49,6 +49,21 @@ io.on('connection', function (socket) {
   socket.on('add user', function (username) {
     if (addedUser) return;
 
+    var query = connection.query('select * from user where id=?',username, function (err, rows) {
+      if(err){
+        throw err;
+      }
+      if (rows.length == 0){
+        var user = {'id':socket.username};
+        var query = connection.query('insert into user set ?',user,function(err,result){
+          if(err){
+            console.error(err)
+            throw err;
+          }
+        })
+      }else
+        console.log('user exist');
+    });
     // we store the username in the socket session for this client
     socket.username = username;
     ++numUsers;
