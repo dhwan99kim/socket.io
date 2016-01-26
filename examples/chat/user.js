@@ -11,7 +11,6 @@ var connection = mysql.createConnection({
 });
 
 exports.getFriends = function(req,res) {
-    console.log(req.params.id);
     var query = connection.query('select * from friend_list where id=? ', req.params.id, function (err, rows) {
         if (err) {
             throw err;
@@ -22,7 +21,6 @@ exports.getFriends = function(req,res) {
 
 exports.addFriends = function(req,res) {
     var friend = req.body;
-    console.log("add friend "+req.body.targetId +" to "+req.body.myId);
     if (!req.body)
         return res.status(400).send();
     var query = connection.query('select * from friend_list where id=? AND friend=?',[req.body.myId, req.body.targetId], function (err, rows) {
@@ -37,8 +35,11 @@ exports.addFriends = function(req,res) {
                     console.error(err);
                     throw err;
                 }
+                res.status(200).send();
             })
-        }else
+        }else {
+            res.status(409).send();
             console.log('friend exist');
+        }
     });
 };
