@@ -8,7 +8,6 @@ var mysql = require('mysql');
 var bodyParser = require('body-parser');
 var jsonParser = bodyParser.json();
 var urlencodedParser = bodyParser.urlencoded({ extended: false });
-
 var users = require('./user');
 
 server.listen(port, function () {
@@ -25,7 +24,9 @@ var connection = mysql.createConnection({
 app.use(express.static(__dirname + '/public'));
 
 app.get('/friends/:id',users.getFriends);
-app.post('/friends/:id',jsonParser, users.addFriends);
+app.post('/friends/:id/:target', users.addFriends);
+app.delete('/friends/:id/:target',users.delFriends);
+
 
 // Chatroom
 

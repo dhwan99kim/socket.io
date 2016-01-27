@@ -20,16 +20,13 @@ exports.getFriends = function(req,res) {
 };
 
 exports.addFriends = function(req,res) {
-    var friend = req.body;
-    if (!req.body)
-        return res.status(400).send();
-    var query = connection.query('select * from friend_list where id=? AND friend=?',[req.body.myId, req.body.targetId], function (err, rows) {
+    var query = connection.query('select * from friend_list where id=? AND friend=?',[req.params.id, req.params.target], function (err, rows) {
         if(err){
             throw err;
         }
         if (rows.length == 0){
-            var friend = {'id':req.body.myId,
-                'friend':req.body.targetId};
+            var friend = {'id':req.params.id,
+                'friend':req.params.target};
             var query = connection.query('insert into friend_list set ?',friend,function(err,result){
                 if(err){
                     console.error(err);
@@ -43,3 +40,13 @@ exports.addFriends = function(req,res) {
         }
     });
 };
+
+exports.delFriends = function(req,res) {
+    var query = connection.query('delete from friend_list where id=? AND friend=?',[req.params.id, req.params.target], function (err, result) {
+        if(err){
+            throw err;
+        }
+        res.status(200).send();
+
+    });
+}
