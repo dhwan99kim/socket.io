@@ -48,7 +48,8 @@ $(function() {
 
       // Tell the server your username
       socket.emit('add user', username);
-      socket.emit("join","room1");
+      //socket.emit("join","room1");
+
     }
   }
 
@@ -264,4 +265,8 @@ $(function() {
   socket.on('stop typing', function (data) {
     removeChatTyping(data);
   });
+
+  socket.on('invite', function(room){
+    socket.emit('join',room);
+  })
 });

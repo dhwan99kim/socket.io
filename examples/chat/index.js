@@ -9,7 +9,7 @@ var bodyParser = require('body-parser');
 var jsonParser = bodyParser.json();
 var urlencodedParser = bodyParser.urlencoded({ extended: false });
 var users = require('./user');
-
+var socket_ids = [];
 server.listen(port, function () {
   console.log('Server listening at port %d', port);
 });
@@ -74,6 +74,7 @@ io.on('connection', function (socket) {
       }else
         console.log('user exist');
     });
+    registerUser(socket,username);
     // we store the username in the socket session for this client
     socket.username = username;
     ++numUsers;
@@ -83,9 +84,45 @@ io.on('connection', function (socket) {
     });
   });
 
+  socket.on('invite',function(id){
+    console.log("invite "+id);
+    socket_id = socket_ids[id];
+    console.log("invite socket_id"+socket_id);
+    if (socket_id != undefined){
+      var roomId = -1;
+
+      var random = Math.floor(Math.random() * 1000000);
+
+      connection.query('select * from rooms where id=?',random, function (err, rows) {
+        if (err) {
+          throw err;
+        }
+        if (rows.length == 0) {
+          var room = {
+            'id': random,
+            'title': '-'
+          };
+          console.log("room "+room );
+          var query = connection.query('insert into rooms set ?', room, function (err, result) {
+            if (err) {
+              console.error(err);
+              throw err;
+            }
+            console.log("random "+random );
+            roomId = random;
+            socket.to(socket_id).emit('invite',roomId);
+            socket.emit('invite',roomId);
+
+          })
+        }
+      });
+
+    }
+  });
   socket.on('join',function(roomId){
     // echo globally (all clients) that a person has connected
     socket.join(roomId);
+    console.log("join "+roomId);
     socket.broadcast.to(roomId).emit('user joined', {
       username: socket.username,
       numUsers: numUsers
@@ -119,3 +156,21 @@ io.on('connection', function (socket) {
     }
   });
 });
+
+function registerUser(socket,nickname){
+  // socket_id와 nickname 테이블을 셋업
+  socket_ids[nickname] = socket.id;
+
+  /*socket.get('nickname',function(err,pre_nick){
+    if(pre_nick != undefined ) delete socket_ids[pre_nick];
+    socket_ids[nickname] = socket.id
+  });*/
+}
+
+function createRoom(){
+
+
+
+
+  return roomId;
+}
