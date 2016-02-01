@@ -25,6 +25,8 @@ $(function() {
 
   var socket = io();
 
+  var roomId = -1;
+
   function addParticipantsMessage (data) {
     var message = '';
     if (data.numUsers === 1) {
@@ -48,6 +50,7 @@ $(function() {
 
       // Tell the server your username
       socket.emit('add user', username);
+      socket.emit('room connect');
       //socket.emit("join","room1");
 
     }
@@ -66,7 +69,8 @@ $(function() {
         message: message
       });
       // tell server to execute 'new message' and send along one parameter
-      socket.emit('new message', message, "room1");
+      if (roomId != -1 )
+        socket.emit('new message', message, roomId);
     }
   }
 
@@ -268,5 +272,6 @@ $(function() {
 
   socket.on('invite', function(room){
     socket.emit('join',room);
+    roomId = room;
   })
 });

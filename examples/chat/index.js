@@ -35,6 +35,19 @@ var numUsers = 0;
 io.on('connection', function (socket) {
   var addedUser = false;
 
+  socket.on('room connect',function(){
+    console.log("room connected");
+    connection.query('select room from room_member where id=?',socket.username, function (err, rows) {
+      if (err) {
+        throw err;
+      }
+      for (i=0;i<rows.length;i++){
+        socket.join(rows[i]);
+        console.log("connect to "+rows[i].room);
+      }
+
+    });
+  });
   // when the client emits 'new message', this listens and executes
   socket.on('new message', function (data,roomId) {
     // we tell the client to execute 'new message'
@@ -91,6 +104,7 @@ io.on('connection', function (socket) {
     if (socket_id != undefined){
       var roomId = -1;
 
+
       var random = Math.floor(Math.random() * 1000000);
 
       connection.query('select * from rooms where id=?',random, function (err, rows) {
@@ -103,7 +117,7 @@ io.on('connection', function (socket) {
             'title': '-'
           };
           console.log("room "+room );
-          var query = connection.query('insert into rooms set ?', room, function (err, result) {
+          connection.query('insert into rooms set ?', room, function (err, result) {
             if (err) {
               console.error(err);
               throw err;
@@ -112,6 +126,8 @@ io.on('connection', function (socket) {
             roomId = random;
             socket.to(socket_id).emit('invite',roomId);
             socket.emit('invite',roomId);
+            socket.emit('open room',roomId);
+
 
           })
         }
@@ -122,11 +138,31 @@ io.on('connection', function (socket) {
   socket.on('join',function(roomId){
     // echo globally (all clients) that a person has connected
     socket.join(roomId);
-    console.log("join "+roomId);
-    socket.broadcast.to(roomId).emit('user joined', {
-      username: socket.username,
-      numUsers: numUsers
+
+    console.log("join id "+socket.username+" room "+roomId);
+    connection.query('select * from room_member where id=? AND room=?',[socket.username, roomId],  function (err, rows) {
+      if (err) {
+        throw err;
+      }
+      if (rows.length == 0) {
+        var room_member = {
+          'id': socket.username,
+          'room':roomId
+        };
+        connection.query('insert into room_member set ?', room_member, function (err, result) {
+          if (err) {
+            console.error(err);
+            throw err;
+          }
+          socket.broadcast.to(roomId).emit('user joined', {
+            username: socket.username,
+            numUsers: numUsers
+          });
+
+        })
+      }
     });
+
   });
 
   // when the client emits 'typing', we broadcast it to others
@@ -167,10 +203,3 @@ function registerUser(socket,nickname){
   });*/
 }
 
-function createRoom(){
-
-
-
-
-  return roomId;
-}
