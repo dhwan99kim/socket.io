@@ -37,25 +37,30 @@ io.on('connection', function (socket) {
 
   socket.on('room connect',function(){
     console.log("room connected");
-    connection.query('select room from room_member where id=?',socket.username, function (err, rows) {
-      if (err) {
-        throw err;
-      }
-      for (i=0;i<rows.length;i++){
-        socket.join(rows[i]);
-        console.log("connect to "+rows[i].room);
-      }
+    if (socket.username != null) {
+      connection.query('select room_id from rooms where user_id=?', socket.username, function (err, rows) {
+        if (err) {
+          throw err;
+        }
+        for (i = 0; i < rows.length; i++) {
+          socket.join(rows[i].room);
+          console.log("connect to " + rows[i].room);
+        }
 
-    });
+      });
+    }
+
   });
   // when the client emits 'new message', this listens and executes
   socket.on('new message', function (data,roomId) {
     // we tell the client to execute 'new message'
     var chat_log = {'id':socket.username,
+      'id':socket.username,
       'name':socket.username,
       'room_id':roomId,
-      'message':data};
-    var query = connection.query('insert into chat_log set ?',chat_log,function(err,result){
+      'message':data,
+      'time':Date.now()};
+    var query = connection.query('insert into messages set ?',chat_log,function(err,result){
       if(err){
         console.error(err)
         throw err;
@@ -102,45 +107,61 @@ io.on('connection', function (socket) {
     socket_id = socket_ids[id];
     console.log("invite socket_id"+socket_id);
     if (socket_id != undefined){
-      var roomId = -1;
-
-
-      var random = Math.floor(Math.random() * 1000000);
-
-      connection.query('select * from rooms where id=?',random, function (err, rows) {
+       connection.query('select room_id from rooms where user_id=? AND member=?',[socket.username,id], function (err, rows) {
         if (err) {
           throw err;
         }
         if (rows.length == 0) {
+          var random = Math.floor(Math.random() * 1000000);
           var room = {
-            'id': random,
-            'title': '-'
+            'user_id': socket.username,
+            'room_id': random,
+            'member':id
           };
-          console.log("room "+room );
+
           connection.query('insert into rooms set ?', room, function (err, result) {
             if (err) {
               console.error(err);
               throw err;
             }
-            console.log("random "+random );
-            roomId = random;
-            socket.to(socket_id).emit('invite',roomId);
-            socket.emit('invite',roomId);
-            socket.emit('open room',roomId);
+            var room2 = {
+              'user_id':id,
+              'room_id': random,
+              'member':socket.username
+            };
 
+            connection.query('insert into rooms set ?', room, function (err, result) {
+              if (err) {
+                console.error(err);
+                throw err;
+              }
+              console.log("random "+random );
+              socket.to(socket_id).emit('invite',random);
+              socket.emit('invite',random);
+              socket.emit('open room',random);
+            })
 
           })
+        }else{
+          socket.to(socket_id).emit('invite',rows[0].room_id);
+          socket.emit('invite',rows[0].room_id);
+          socket.emit('open room',rows[0].room_id);
         }
       });
 
     }
   });
+
   socket.on('join',function(roomId){
     // echo globally (all clients) that a person has connected
     socket.join(roomId);
 
     console.log("join id "+socket.username+" room "+roomId);
-    connection.query('select * from room_member where id=? AND room=?',[socket.username, roomId],  function (err, rows) {
+    socket.broadcast.to(roomId).emit('user joined', {
+      username: socket.username,
+      numUsers: numUsers
+    });
+    /*connection.query('select * from rooms where id=? AND room=?',[socket.username, roomId],  function (err, rows) {
       if (err) {
         throw err;
       }
@@ -149,43 +170,36 @@ io.on('connection', function (socket) {
           'id': socket.username,
           'room':roomId
         };
-        connection.query('insert into room_member set ?', room_member, function (err, result) {
-          if (err) {
-            console.error(err);
-            throw err;
-          }
-          socket.broadcast.to(roomId).emit('user joined', {
-            username: socket.username,
-            numUsers: numUsers
-          });
-
-        })
+        socket.broadcast.to(roomId).emit('user joined', {
+          username: socket.username,
+          numUsers: numUsers
+        });
       }
-    });
+    });*/
 
   });
 
   // when the client emits 'typing', we broadcast it to others
-  socket.on('typing', function () {
-    socket.broadcast.emit('typing', {
+  socket.on('typing', function (roomId) {
+    socket.broadcast.to(roomId).emit('typing', {
       username: socket.username
     });
   });
 
   // when the client emits 'stop typing', we broadcast it to others
-  socket.on('stop typing', function () {
-    socket.broadcast.emit('stop typing', {
+  socket.on('stop typing', function (roomId) {
+    socket.broadcast.to(roomId).emit('stop typing', {
       username: socket.username
     });
   });
 
   // when the user disconnects.. perform this
-  socket.on('disconnect', function () {
+  socket.on('disconnect', function (roomId) {
     if (addedUser) {
       --numUsers;
 
       // echo globally that this client has left
-      socket.broadcast.emit('user left', {
+      socket.broadcast.to(roomId).emit('user left', {
         username: socket.username,
         numUsers: numUsers
       });
