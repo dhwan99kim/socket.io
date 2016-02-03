@@ -2,7 +2,7 @@
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
-var io = require('../..')(server);
+var io = require('socket.io')(server);
 var port = process.env.PORT || 3000;
 var mysql = require('mysql');
 var bodyParser = require('body-parser');
@@ -35,22 +35,6 @@ var numUsers = 0;
 io.on('connection', function (socket) {
   var addedUser = false;
 
-  socket.on('room connect',function(){
-    console.log("room connected");
-    if (socket.username != null) {
-      connection.query('select room_id from rooms where user_id=?', socket.username, function (err, rows) {
-        if (err) {
-          throw err;
-        }
-        for (i = 0; i < rows.length; i++) {
-          socket.join(rows[i].room);
-          console.log("connect to " + rows[i].room);
-        }
-
-      });
-    }
-
-  });
   // when the client emits 'new message', this listens and executes
   socket.on('new message', function (data,roomId) {
     // we tell the client to execute 'new message'
@@ -65,18 +49,20 @@ io.on('connection', function (socket) {
         console.error(err)
         throw err;
       }
-      console.log(query);
+      //console.log(query);
     })
     socket.broadcast.to(roomId).emit('new message', {
       username: socket.username,
-      message: data
+      message: data,
+      roomId: roomId
     });
   });
 
   // when the client emits 'add user', this listens and executes
   socket.on('add user', function (username) {
-    if (addedUser) return;
-
+    //if (addedUser) return;
+    socket.username = username;
+    console.log("add user "+username);
     var query = connection.query('select * from user where id=?',username, function (err, rows) {
       if(err){
         throw err;
@@ -91,10 +77,23 @@ io.on('connection', function (socket) {
         })
       }else
         console.log('user exist');
+      console.log("room connected");
+      if (socket.username != null) {
+        connection.query('select room_id from rooms where user_id=?', socket.username, function (err, rows) {
+          if (err) {
+            throw err;
+          }
+          for (i = 0; i < rows.length; i++) {
+            socket.join(rows[i].room_id);
+            console.log("connect to " + rows[i].room_id);
+          }
+
+        });
+      }
     });
     registerUser(socket,username);
     // we store the username in the socket session for this client
-    socket.username = username;
+
     ++numUsers;
     addedUser = true;
     socket.emit('login', {
@@ -130,7 +129,7 @@ io.on('connection', function (socket) {
               'member':socket.username
             };
 
-            connection.query('insert into rooms set ?', room, function (err, result) {
+            connection.query('insert into rooms set ?', room2, function (err, result) {
               if (err) {
                 console.error(err);
                 throw err;
@@ -143,8 +142,8 @@ io.on('connection', function (socket) {
 
           })
         }else{
-          socket.to(socket_id).emit('invite',rows[0].room_id);
-          socket.emit('invite',rows[0].room_id);
+          //socket.to(socket_id).emit('invite',rows[0].room_id);
+          //socket.emit('invite',rows[0].room_id);
           socket.emit('open room',rows[0].room_id);
         }
       });
@@ -155,12 +154,15 @@ io.on('connection', function (socket) {
   socket.on('join',function(roomId){
     // echo globally (all clients) that a person has connected
     socket.join(roomId);
-
+    var clientsList = io.sockets.adapter.rooms[roomId];
+    console.log("number of room " + clientsList.length);
     console.log("join id "+socket.username+" room "+roomId);
+
     socket.broadcast.to(roomId).emit('user joined', {
       username: socket.username,
-      numUsers: numUsers
+      numUsers: clientsList.length
     });
+
     /*connection.query('select * from rooms where id=? AND room=?',[socket.username, roomId],  function (err, rows) {
       if (err) {
         throw err;
@@ -211,9 +213,5 @@ function registerUser(socket,nickname){
   // socket_id와 nickname 테이블을 셋업
   socket_ids[nickname] = socket.id;
 
-  /*socket.get('nickname',function(err,pre_nick){
-    if(pre_nick != undefined ) delete socket_ids[pre_nick];
-    socket_ids[nickname] = socket.id
-  });*/
 }
 
