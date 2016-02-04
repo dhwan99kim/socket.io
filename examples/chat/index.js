@@ -143,7 +143,7 @@ io.on('connection', function (socket) {
 
           })
         }else{
-          //socket.to(socket_id).emit('invite',rows[0].room_id);
+          socket.to(socket_id).emit('invite',rows[0].room_id);
           //socket.emit('invite',rows[0].room_id);
           socket.emit('open room',rows[0].room_id);
         }
