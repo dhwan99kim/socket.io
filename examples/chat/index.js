@@ -27,6 +27,7 @@ app.get('/friends/:id',users.getFriends);
 app.post('/friends/:id/:target', users.addFriends);
 app.delete('/friends/:id/:target',users.delFriends);
 
+app.get('/messaging_rooms/:id',users.getMessagingRooms);
 
 // Chatroom
 
