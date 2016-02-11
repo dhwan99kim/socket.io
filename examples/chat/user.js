@@ -10,6 +10,49 @@ var connection = mysql.createConnection({
     database:'chat'
 });
 
+
+
+exports.loginCheck = function(req,res) {
+
+    if (!req.body)
+      return res.status(400).send();
+    connection.query('select * from users where user_id=? AND password=?',[req.body.user_id, req.body.password], function (err, rows) {
+        if(err){
+            throw err;
+        }
+        if (rows.length == 0){
+            res.status(404).send();
+        }
+        res.status(200).send();
+    });
+};
+
+exports.addUser = function(req,res) {
+
+    if (!req.body)
+        return res.status(400).send();
+    connection.query('select * from users where user_id=?',req.body.user_id, function (err, rows) {
+        if(err){
+            throw err;
+        }
+        if (rows.length == 0){
+            var user = {'user_id':req.body.user_id,
+                'nickname':req.body.nickname,
+                'password':req.body.password};
+            var query = connection.query('insert into users set ?',user,function(err,result){
+                if(err){
+                    throw err;
+                }
+                res.status(200).send();
+            })
+        }else{
+            console.log("exist");
+            res.status(409).send();
+        }
+    });
+};
+
+
 exports.getFriends = function(req,res) {
     var query = connection.query('select * from friend_list where id=? ', req.params.id, function (err, rows) {
         if (err) {

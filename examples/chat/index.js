@@ -22,6 +22,9 @@ var connection = mysql.createConnection({
 });
 // Routing
 app.use(express.static(__dirname + '/public'));
+app.post('/login',jsonParser, users.loginCheck);
+app.post('/users/',jsonParser, users.addUser);
+
 
 app.get('/friends/:id',users.getFriends);
 app.post('/friends/:id/:target', users.addFriends);
@@ -64,7 +67,20 @@ io.on('connection', function (socket) {
     //if (addedUser) return;
     socket.username = username;
     console.log("add user "+username);
-    var query = connection.query('select * from user where id=?',username, function (err, rows) {
+
+    if (socket.username != null) {
+      connection.query('select room_id from rooms where user_id=?', socket.username, function (err, rows) {
+        if (err) {
+          throw err;
+        }
+        for (i = 0; i < rows.length; i++) {
+          socket.join(rows[i].room_id);
+          console.log("connect to " + rows[i].room_id);
+        }
+
+      });
+    }
+    /*var query = connection.query('select * from user where id=?',username, function (err, rows) {
       if(err){
         throw err;
       }
@@ -91,7 +107,7 @@ io.on('connection', function (socket) {
 
         });
       }
-    });
+    });*/
     registerUser(socket,username);
     // we store the username in the socket session for this client
 
