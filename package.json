@@ -1,14 +1,15 @@
 {
-  "name": "socket.io-chat",
-  "version": "0.0.0",
-  "description": "A simple chat client using socket.io",
+  "name": "socket.io-chat-server",
+  "version": "0.1.0",
+  "description": "chat server using socket.io",
   "main": "index.js",
-  "author": "Grant Timmerman",
+  "author": "Donghwan Kim",
   "private": true,
-  "license": "BSD",
+  "license": "MIT",
   "dependencies": {
     "express": "3.4.8",
     "mysql": "~2.0",
-    "body-parser": "*"
+    "body-parser": "*",
+    "multer": "1.1.0"
   }
 }

@@ -1,6 +1,7 @@
 /**
  * Created by dev14 on 2016. 1. 26..
  */
+var fs  = require('fs');
 var mysql = require('mysql');
 var connection = mysql.createConnection({
     host    :'localhost',
@@ -50,6 +51,19 @@ exports.addUser = function(req,res) {
             res.status(409).send();
         }
     });
+};
+
+exports.upload = function(req, res){
+    var files = req.files.files; // files array
+    for( var i=0; i<files.length; i++ ){
+        fs.rename( files[i].path, '/temp/'+files[i].name, function( error ){
+            if( error ){
+                res.send( 'Error upload files' );
+                return false;
+            }
+        });
+    }
+    res.status(200).send();
 };
 
 
@@ -104,3 +118,35 @@ exports.getMessagingRooms = function(req,res) {
         res.status(200).send(rows);
     });
 };
+
+exports.setProfileImage = function(req, res){
+    console.log(req.files);
+    var tmp_path = __dirname + '/' + req.files.myfile[0].path;
+    var target_path = __dirname + '/profile/' + req.params.id+".png";
+
+    fs.rename(tmp_path, target_path, function(err) {
+        if (err) throw err;
+
+        fs.unlink(tmp_path, function() {
+            res.status(200).send();
+        });
+    });
+};
+
+exports.getProfileImage = function(req, res){
+    console.log("getProfileImage");
+    var target_path = __dirname + '/profile/' + req.params.id+".png";
+    fs.stat(target_path,function(err,stats){
+        if (err == null){
+            var img = fs.readFileSync(target_path);
+            res.writeHead(200, {'Content-Type': 'image/png' });
+            res.end(img, 'binary');
+        }else{
+            res.status(404).send();
+        }
+    });
+};
+
+function getFileExtension(filename){
+  return filename.split('.').pop();
+}

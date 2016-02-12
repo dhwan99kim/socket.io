@@ -5,9 +5,12 @@ var server = require('http').createServer(app);
 var io = require('socket.io')(server);
 var port = process.env.PORT || 3000;
 var mysql = require('mysql');
+var multer = require('multer');
+var upload = multer({ dest: 'tmp/' });
 var bodyParser = require('body-parser');
 var jsonParser = bodyParser.json();
 var urlencodedParser = bodyParser.urlencoded({ extended: false });
+
 var users = require('./user');
 var socket_ids = [];
 server.listen(port, function () {
@@ -25,12 +28,15 @@ app.use(express.static(__dirname + '/public'));
 app.post('/login',jsonParser, users.loginCheck);
 app.post('/users/',jsonParser, users.addUser);
 
-
+app.post('/users/:id/avatar', upload.fields([{name:'myfile', maxCount:1}]), users.setProfileImage);
+app.get('/users/:id/avatar', users.getProfileImage);
 app.get('/friends/:id',users.getFriends);
 app.post('/friends/:id/:target', users.addFriends);
 app.delete('/friends/:id/:target',users.delFriends);
 
 app.get('/messaging_rooms/:id',users.getMessagingRooms);
+
+
 
 // Chatroom
 
