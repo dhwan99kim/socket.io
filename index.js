@@ -12,6 +12,7 @@ var jsonParser = bodyParser.json();
 var urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 var users = require('./user');
+var files = require('./files');
 var socket_ids = [];
 server.listen(port, function () {
   console.log('Server listening at port %d', port);
@@ -33,8 +34,10 @@ app.get('/users/:id/avatar', users.getProfileImage);
 app.get('/friends/:id',users.getFriends);
 app.post('/friends/:id/:target', users.addFriends);
 app.delete('/friends/:id/:target',users.delFriends);
-
 app.get('/messaging_rooms/:id',users.getMessagingRooms);
+app.get('/files/:filename',files.downloadImage);
+app.post('/files/',upload.fields([{name:'myfile', maxCount:1}]),files.uploadImage);
+
 
 
 
@@ -46,12 +49,13 @@ io.on('connection', function (socket) {
   var addedUser = false;
 
   // when the client emits 'new message', this listens and executes
-  socket.on('new message', function (data,roomId) {
+  socket.on('new message', function (type,data,roomId) {
     // we tell the client to execute 'new message'
     var chat_log = {'id':socket.username,
       'id':socket.username,
       'name':socket.username,
       'room_id':roomId,
+      'message_type': type,
       'message':data,
       'time':Date.now()};
     var query = connection.query('insert into messages set ?',chat_log,function(err,result){
@@ -64,7 +68,8 @@ io.on('connection', function (socket) {
     socket.broadcast.to(roomId).emit('new message', {
       username: socket.username,
       message: data,
-      roomId: roomId
+      roomId: roomId,
+      type : type
     });
   });
 
