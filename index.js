@@ -129,6 +129,35 @@ io.on('connection', function (socket) {
     });
   });
 
+  socket.on('invite room', function (id, room) {
+    console.log("invite room "+id);
+    socket_id = socket_ids[id];
+    console.log("invite socket_id"+socket_id);
+
+    if (socket_id != undefined) {
+      socket.to(socket_id).emit('invite',room);
+      connection.query('select room_id from rooms where room_id=?', room, function (err, rows) {
+        if (err) {
+          throw err;
+        }
+        if (rows.length == 0) {
+          var room = {
+            'user_id': id,
+            'room_id': room,
+            'member': socket.username
+          };
+
+          connection.query('insert into rooms set ?', room, function (err, result) {
+            if (err) {
+              console.error(err);
+              throw err;
+            }
+          });
+        }
+      });
+    }
+  });
+
   socket.on('invite',function(id){
     console.log("invite "+id);
     socket_id = socket_ids[id];
