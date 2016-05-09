@@ -9,7 +9,7 @@ var multer = require('multer');
 var upload = multer({ dest: 'tmp/' });
 var bodyParser = require('body-parser');
 var jsonParser = bodyParser.json();
-var urlencodedParser = bodyParser.urlencoded({ extended: false });
+//var urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 var users = require('./user');
 var files = require('./files');
@@ -51,28 +51,115 @@ io.on('connection', function (socket) {
   // when the client emits 'new message', this listens and executes
   socket.on('new message', function (type,data,roomId) {
     // we tell the client to execute 'new message'
-    var chat_log = {'id':socket.username,
-      'id':socket.username,
-      'name':socket.username,
-      'room_id':roomId,
-      'message_type': type,
-      'message':data,
-      'time':Date.now()};
-    var query = connection.query('insert into messages set ?',chat_log,function(err,result){
-      if(err){
-        console.error(err)
+
+    connection.query('SELECT user_id FROM rooms WHERE room_id=?', roomId, function (err, rows) {
+      if (err) {
         throw err;
       }
-      //console.log(query);
-    })
-    socket.broadcast.to(roomId).emit('new message', {
-      username: socket.username,
-      message: data,
-      roomId: roomId,
-      type : type
+      var unread_cnt = rows.length -1;
+      var current = Date.now();
+      var chat_log = {
+        'sender_id':socket.username,
+        'name':socket.username,
+        'room_id':roomId,
+        'message_type': type,
+        'message':data,
+        'time':current,
+        'unread_count':unread_cnt};
+
+      var query = connection.query('INSERT INTO messages SET ?',chat_log,function(err,result){
+        if(err){
+          console.error(err)
+          throw err;
+        }
+        //console.log(query);
+        connection.query('SELECT idx FROM messages WHERE sender_id = ? AND room_id=? AND time=?', [socket.username, roomId, current], function (err, rows2) {
+          if(err){
+            console.error(err)
+            throw err;
+          }
+          console.log(rows2[0]);
+          socket.broadcast.in(roomId).emit('new message', {
+            username: socket.username,
+            message: data,
+            roomId: roomId,
+            type : type,
+            unread_count : unread_cnt,
+            idx : rows2[0].idx
+          });
+          socket.emit('new message', {
+            username: socket.username,
+            message: data,
+            roomId: roomId,
+            type : type,
+            unread_count : unread_cnt,
+            idx : rows2[0].idx
+          });
+        });
+      })
+
     });
+
   });
 
+  socket.on('read',function(indices){
+
+
+    /*for(var i = 0; indices.length; i++)
+     {
+     console.log(indices[i]);
+     connection.query(" SELECT ? AS idx, unread_count FROM messages WHERE idx = ? ", [i, indices[i]], function(err, rows){
+     console.log(indices[i]);
+     console.log(rows);
+
+     if(err)
+     {
+     throw err;
+     }
+
+     for(var j = 0; j <rows.length; j++)
+     {
+     if(rows[j].unread_count > 0)
+     {
+     console.log(i);
+     }
+     }
+     });
+     }*/
+
+    for (i=0;i<indices.length;i++){
+
+      var idx = indices[i];
+      connection.query(" SELECT ? AS idx, unread_count FROM messages WHERE idx = ? ", [i, indices[i]], function(err, rows){
+      //connection.query('select unread_count from messages where idx=?', idx, function (err, rows) {
+        if (err) {
+          throw err;
+        }
+
+        for (var j=0;j<rows.length;j++){
+          if (rows[j].unread_count >0){
+            console.log(rows);
+            var data = [rows[j].unread_count-1,indices[rows[j].idx]];
+            console.log(data);
+
+            connection.query('UPDATE messages SET unread_count = ? where idx = ?', data, function(err,rows2){
+              if (err) {
+
+                throw err;
+              }
+              console.log("unread_count update "+data);
+            });
+          }
+        }
+
+      });
+    }
+
+
+
+
+
+  });
   // when the client emits 'add user', this listens and executes
   socket.on('add user', function (username) {
     //if (addedUser) return;

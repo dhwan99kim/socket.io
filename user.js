@@ -110,7 +110,7 @@ exports.delFriends = function(req,res) {
 
 exports.getMessagingRooms = function(req,res) {
     var query = connection.query('SELECT T1.`room_id`, T1.`member`, ' +
-        '(SELECT `message` FROM `messages` WHERE `room_id` = T1.`room_id` ORDER BY `index` DESC LIMIT 1) AS `message`FROM `rooms` T1 ' +
+        '(SELECT `message` FROM `messages` WHERE `room_id` = T1.`room_id` ORDER BY `idx` DESC LIMIT 1) AS `message`FROM `rooms` T1 ' +
         'WHERE T1.`user_id` = ? ', req.params.id, function (err, rows) {
         if (err) {
             throw err;
