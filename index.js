@@ -67,6 +67,7 @@ io.on('connection', function (socket) {
         'time':current,
         'unread_count':unread_cnt};
 
+      console.log(chat_log);
       var query = connection.query('INSERT INTO messages SET ?',chat_log,function(err,result){
         if(err){
           console.error(err)
@@ -102,33 +103,9 @@ io.on('connection', function (socket) {
 
   });
 
-  socket.on('read',function(indices){
-
-
-    /*for(var i = 0; indices.length; i++)
-     {
-     console.log(indices[i]);
-     connection.query(" SELECT ? AS idx, unread_count FROM messages WHERE idx = ? ", [i, indices[i]], function(err, rows){
-     console.log(indices[i]);
-     console.log(rows);
-
-     if(err)
-     {
-     throw err;
-     }
-
-     for(var j = 0; j <rows.length; j++)
-     {
-     if(rows[j].unread_count > 0)
-     {
-     console.log(i);
-     }
-     }
-     });
-     }*/
+  socket.on('read',function(roomId, indices){
 
     for (i=0;i<indices.length;i++){
-
       var idx = indices[i];
       connection.query(" SELECT ? AS idx, unread_count FROM messages WHERE idx = ? ", [i, indices[i]], function(err, rows){
       //connection.query('select unread_count from messages where idx=?', idx, function (err, rows) {
@@ -142,6 +119,9 @@ io.on('connection', function (socket) {
             var data = [rows[j].unread_count-1,indices[rows[j].idx]];
             console.log(data);
 
+            socket.broadcast.to(roomId).emit('read', {
+              idx: [indices[rows[j].idx]]
+            });
             connection.query('UPDATE messages SET unread_count = ? where idx = ?', data, function(err,rows2){
               if (err) {
 
