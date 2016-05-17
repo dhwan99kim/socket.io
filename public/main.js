@@ -70,7 +70,7 @@ $(function() {
       });
       // tell server to execute 'new message' and send along one parameter
       if (roomId != -1 )
-        socket.emit('new message', message, roomId);
+        socket.emit('new message', 'text' ,message, roomId);
     }
   }
 

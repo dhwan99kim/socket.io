@@ -49,9 +49,10 @@ io.on('connection', function (socket) {
   var addedUser = false;
 
   // when the client emits 'new message', this listens and executes
+  //type: Message Type
+  //data: contents (text, image-url, map-gps_pos)
   socket.on('new message', function (type,data,roomId) {
     // we tell the client to execute 'new message'
-
     connection.query('SELECT user_id FROM rooms WHERE room_id=?', roomId, function (err, rows) {
       if (err) {
         throw err;
@@ -68,18 +69,20 @@ io.on('connection', function (socket) {
         'unread_count':unread_cnt};
 
       console.log(chat_log);
+      //Add Message in DB
       var query = connection.query('INSERT INTO messages SET ?',chat_log,function(err,result){
         if(err){
           console.error(err)
           throw err;
         }
-        //console.log(query);
+        //get index of message
         connection.query('SELECT idx FROM messages WHERE sender_id = ? AND room_id=? AND time=?', [socket.username, roomId, current], function (err, rows2) {
           if(err){
             console.error(err)
             throw err;
           }
           console.log(rows2[0]);
+          //send message to member in Room
           socket.broadcast.in(roomId).emit('new message', {
             username: socket.username,
             message: data,
@@ -88,6 +91,7 @@ io.on('connection', function (socket) {
             unread_count : unread_cnt,
             idx : rows2[0].idx
           });
+          //send message to Sender
           socket.emit('new message', {
             username: socket.username,
             message: data,
@@ -107,6 +111,7 @@ io.on('connection', function (socket) {
 
     for (i=0;i<indices.length;i++){
       var idx = indices[i];
+      //get unread count with index
       connection.query(" SELECT ? AS idx, unread_count FROM messages WHERE idx = ? ", [i, indices[i]], function(err, rows){
       //connection.query('select unread_count from messages where idx=?', idx, function (err, rows) {
         if (err) {
@@ -119,6 +124,7 @@ io.on('connection', function (socket) {
             var data = [rows[j].unread_count-1,indices[rows[j].idx]];
             console.log(data);
 
+            //Send read event in room
             socket.broadcast.to(roomId).emit('read', {
               idx: [indices[rows[j].idx]]
             });
@@ -147,6 +153,7 @@ io.on('connection', function (socket) {
     console.log("add user "+username);
 
     if (socket.username != null) {
+      //유저 접속시 user_id에 해당하는 room으로 소켓 join 연결
       connection.query('select room_id from rooms where user_id=?', socket.username, function (err, rows) {
         if (err) {
           throw err;
@@ -158,34 +165,7 @@ io.on('connection', function (socket) {
 
       });
     }
-    /*var query = connection.query('select * from user where id=?',username, function (err, rows) {
-      if(err){
-        throw err;
-      }
-      if (rows.length == 0){
-        var user = {'id':socket.username};
-        var query = connection.query('insert into user set ?',user,function(err,result){
-          if(err){
-            console.error(err)
-            throw err;
-          }
-        })
-      }else
-        console.log('user exist');
-      console.log("room connected");
-      if (socket.username != null) {
-        connection.query('select room_id from rooms where user_id=?', socket.username, function (err, rows) {
-          if (err) {
-            throw err;
-          }
-          for (i = 0; i < rows.length; i++) {
-            socket.join(rows[i].room_id);
-            console.log("connect to " + rows[i].room_id);
-          }
 
-        });
-      }
-    });*/
     registerUser(socket,username);
     // we store the username in the socket session for this client
 
@@ -196,45 +176,20 @@ io.on('connection', function (socket) {
     });
   });
 
-  socket.on('invite room', function (id, room) {
-    console.log("invite room "+id);
-    socket_id = socket_ids[id];
-    console.log("invite socket_id"+socket_id);
 
-    if (socket_id != undefined) {
-      socket.to(socket_id).emit('invite',room);
-      connection.query('select room_id from rooms where room_id=?', room, function (err, rows) {
-        if (err) {
-          throw err;
-        }
-        if (rows.length == 0) {
-          var room = {
-            'user_id': id,
-            'room_id': room,
-            'member': socket.username
-          };
-
-          connection.query('insert into rooms set ?', room, function (err, result) {
-            if (err) {
-              console.error(err);
-              throw err;
-            }
-          });
-        }
-      });
-    }
-  });
-
+  //해당하는 id의 유저를 room으로 초대
   socket.on('invite',function(id){
     console.log("invite "+id);
     socket_id = socket_ids[id];
     console.log("invite socket_id"+socket_id);
     if (socket_id != undefined){
+
        connection.query('select room_id from rooms where user_id=? AND member=?',[socket.username,id], function (err, rows) {
         if (err) {
           throw err;
         }
         if (rows.length == 0) {
+          //Todo: 현재 random으로 되어 있는 room Id를 index 정해주는 작업
           var random = Math.floor(Math.random() * 1000000);
           var room = {
             'user_id': socket.username,
@@ -242,6 +197,7 @@ io.on('connection', function (socket) {
             'member':id
           };
 
+          //각각 user별로 room 추가
           connection.query('insert into rooms set ?', room, function (err, result) {
             if (err) {
               console.error(err);
@@ -261,11 +217,13 @@ io.on('connection', function (socket) {
               console.log("random "+random );
               socket.to(socket_id).emit('invite',random);
               socket.emit('invite',random);
+              //방 오픈 메세지 전송
               socket.emit('open room',random);
             })
 
           })
         }else{
+          //현재 멤버로 구성된 room이 있으면 해당 room으로 초대
           socket.to(socket_id).emit('invite',rows[0].room_id);
           //socket.emit('invite',rows[0].room_id);
           socket.emit('open room',rows[0].room_id);
@@ -286,22 +244,6 @@ io.on('connection', function (socket) {
       username: socket.username,
       numUsers: clientsList.length
     });
-
-    /*connection.query('select * from rooms where id=? AND room=?',[socket.username, roomId],  function (err, rows) {
-      if (err) {
-        throw err;
-      }
-      if (rows.length == 0) {
-        var room_member = {
-          'id': socket.username,
-          'room':roomId
-        };
-        socket.broadcast.to(roomId).emit('user joined', {
-          username: socket.username,
-          numUsers: numUsers
-        });
-      }
-    });*/
 
   });
 

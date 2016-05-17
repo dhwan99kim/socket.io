@@ -17,7 +17,7 @@ exports.loginCheck = function(req,res) {
 
     if (!req.body)
       return res.status(400).send();
-    connection.query('select * from users where user_id=? AND password=?',[req.body.user_id, req.body.password], function (err, rows) {
+    connection.query('SELECT * FROM users WHERE user_id=? AND password=?',[req.body.user_id, req.body.password], function (err, rows) {
         if(err){
             throw err;
         }
@@ -32,7 +32,7 @@ exports.addUser = function(req,res) {
 
     if (!req.body)
         return res.status(400).send();
-    connection.query('select * from users where user_id=?',req.body.user_id, function (err, rows) {
+    connection.query('SELECT * FROM users WHERE user_id=?',req.body.user_id, function (err, rows) {
         if(err){
             throw err;
         }
@@ -40,7 +40,7 @@ exports.addUser = function(req,res) {
             var user = {'user_id':req.body.user_id,
                 'nickname':req.body.nickname,
                 'password':req.body.password};
-            var query = connection.query('insert into users set ?',user,function(err,result){
+            var query = connection.query('INSERT INTO users SET ?',user,function(err,result){
                 if(err){
                     throw err;
                 }
@@ -68,7 +68,7 @@ exports.upload = function(req, res){
 
 
 exports.getFriends = function(req,res) {
-    var query = connection.query('select * from friend_list where id=? ', req.params.id, function (err, rows) {
+    var query = connection.query('SELECT * FROM friend_list WHERE id=? ', req.params.id, function (err, rows) {
         if (err) {
             throw err;
         }
@@ -77,14 +77,14 @@ exports.getFriends = function(req,res) {
 };
 
 exports.addFriends = function(req,res) {
-    var query = connection.query('select * from friend_list where id=? AND friend=?',[req.params.id, req.params.target], function (err, rows) {
+    var query = connection.query('SELECT * FROM friend_list WHERE id=? AND friend=?',[req.params.id, req.params.target], function (err, rows) {
         if(err){
             throw err;
         }
         if (rows.length == 0){
             var friend = {'id':req.params.id,
                 'friend':req.params.target};
-            var query = connection.query('insert into friend_list set ?',friend,function(err,result){
+            var query = connection.query('INSERT INTO friend_list SET ?',friend,function(err,result){
                 if(err){
                     console.error(err);
                     throw err;
@@ -99,7 +99,7 @@ exports.addFriends = function(req,res) {
 };
 
 exports.delFriends = function(req,res) {
-    var query = connection.query('delete from friend_list where id=? AND friend=?',[req.params.id, req.params.target], function (err, result) {
+    var query = connection.query('DELETE FROM friend_list WHERE id=? AND friend=?',[req.params.id, req.params.target], function (err, result) {
         if(err){
             throw err;
         }
